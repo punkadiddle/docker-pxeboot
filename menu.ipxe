@@ -1,0 +1,74 @@
+#!ipxe
+
+# Variables are specified in boot.ipxe.cfg
+console --x 1024 --y 768 --picture ipxe.png
+
+isset ${menu-default} || set menu-default exit
+
+###################### MAIN MENU ####################################
+
+:start
+menu iPXE Bootmenue ${hostname} ${mac:hexraw}
+item --gap --             ------------------------- Operating systems ------------------------------
+item --key u ubuntu       Ubuntu 16.04 Desktop
+item --gap --             ------------------------- Projektmenues ----------------------------------
+item --key a submenu-a    Demoprojekt A
+item --gap --             ------------------------- Tools and utilities ----------------------------
+item --key p pxelinux     Load PXELinux menu
+item --gap --             ------------------------- Advanced options -------------------------------
+item --key c config       Configure settings
+item shell                Drop to iPXE shell
+item reboot               Reboot computer
+item
+item --key x exit         Exit iPXE and continue BIOS boot
+choose --timeout ${menu-timeout} --default ${menu-default} selected || goto cancel
+set menu-timeout 0
+goto ${selected}
+
+:cancel
+echo You cancelled the menu, dropping you to a shell
+
+:shell
+echo Type 'exit' to get the back to the menu
+shell
+set menu-timeout 0
+set submenu-timeout 0
+goto start
+
+:failed
+echo Booting failed, dropping to shell
+goto shell
+
+:reboot
+reboot
+
+:exit
+exit
+
+:config
+config
+goto start
+
+:back
+set submenu-timeout 0
+clear submenu-default
+goto start
+
+############ MAIN MENU ITEMS ############
+
+:pxelinux
+chain pxelinux.0 || goto failed
+goto start
+
+:ubuntu
+echo Starting Ubuntu 16.04 installer
+set base-url ${boot-url}ubuntu-16.04-desktop
+kernel ${base-url}/linux
+initrd ${base-url}/initrd.gz
+imgargs linux auto=true fb=false url=${base-url}/./preseed.cfg
+boot || goto failed
+goto start
+
+:submenu-a
+chain --autofree ${boot-dir}a/submenu.ipxe ||
+goto start

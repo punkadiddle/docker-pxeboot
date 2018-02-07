@@ -1,0 +1,20 @@
+#!ipxe
+
+# Beispiel
+# Datei kopieren und alle "a" Label durch eigene ersetzen!
+
+menu iPXE Demoprojekt
+item --gap --             ------------------------- Operating systems ------------------------------
+item --key 1 a1           Boot A stuff
+item --gap --             ------------------------- Advanced options -------------------------------
+item
+item --key 0x08 back      Back to top menu...
+iseq ${menu-default} menu-a && isset ${submenu-default} && goto menu-a-timed ||
+choose selected && goto ${selected} || goto start
+
+:menu-a-timed
+choose --timeout ${submenu-timeout} --default ${submenu-default} selected && goto ${selected} || goto start
+
+:a1
+echo A1
+goto shell

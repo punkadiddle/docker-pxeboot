@@ -1,15 +1,44 @@
 FROM centos:latest
-MAINTAINER nanert <nanert@nanert.com>
 
-RUN yum install -y tftp-server syslinux wget
-RUN mkdir /srv/{centos7,pxelinux.cfg}
-RUN wget https://mirrors.xmission.com/centos/7/os/x86_64/images/pxeboot/vmlinuz -O /srv/centos7/vmlinuz
-RUN wget http://mirrors.xmission.com/centos/7/os/x86_64/images/pxeboot/initrd.img -O /srv/centos7/initrd.img
-RUN cp /usr/share/syslinux/{{mboot,menu,chain}.c32,pxelinux.0,memdisk} /srv
-RUN export TMPF=/srv/pxelinux.cfg/default && echo "default menu.c32" >> ${TMPF} && echo "prompt 0" >> ${TMPF} && echo "timeout 300" >> ${TMPF} && echo "ONTIMEOUT local" >> ${TMPF} && echo >> ${TMPF} && echo "menu title #####  PXE Boot Menu  #####" >> ${TMPF} && echo "label 1" >> ${TMPF} && echo "menu label ^1) Install CentOS 7 (Online)" >> ${TMPF} && echo "kernel centos7/vmlinuz" >> ${TMPF} && echo "append initrd=centos7/initrd.img repo=http://mirror.centos.org/centos/7/os/x86_64/ devfs=nomount" >> ${TMPF}
+RUN yum update;\
+    yum install -y tftp-server syslinux syslinux-tftpboot
 
+RUN mkdir -p /srv/tftp/{pxelinux.cfg}
+RUN cp /usr/share/syslinux/{{mboot,menu,chain}.c32,pxelinux.0,memdisk} /srv/tftp
+RUN mkdir -p /srv/tftp/{by-uuid,by-hostname,by-mac}
+COPY default /srv/tftp/pxelinux.cfg/
+COPY *.ipxe* /srv/tftp/
+COPY ipxe.png /srv/tftp/
+RUN mkdir /srv/tftp/a
+COPY a/* /srv/tftp/a/
+
+RUN yum -y install unzip make gcc perl xz-devel
+
+# ----------------------------------------------------------------------------
+# Bau von iPXE
+# http://ipxe.org/howto/msdhcp
+# git clone git://git.ipxe.org/ipxe.git
+WORKDIR /tmp
+COPY ipxe-master.zip .
+COPY init.ipxe .
+RUN unzip ipxe-master.zip
+WORKDIR /tmp/ipxe-master/src
+RUN sed -ri 's;^//(#define[[:space:]]+)(CONSOLE_CMD|NTP_CMD|REBOOT_CMD)(.*);\1\2\3;g' config/general.h;\
+    sed -ri 's;^//(#define[[:space:]]+)(CONSOLE_FRAMEBUFFER)(.*)$;\1\2\3;g' config/console.h;\
+    sed -ri 's;^//(#define[[:space:]]+KEYBOARD_MAP).*;\1 de;g' config/console.h
+RUN make bin/undionly.kpxe EMBED=/tmp/init.ipxe
+RUN cp /tmp/ipxe-master/src/bin/undionly.kpxe /srv/tftp/
+RUN cp /tmp/ipxe-master/src/bin/undionly.kpxe /srv/
+RUN rm -rf /tmp/ipxe-master* /tmp/*.ipxe
+# ----------------------------------------------------------------------------
+
+RUN yum -y remove unzip make gcc perl xz-devel
 
 ENV LISTEN_IP=0.0.0.0
 ENV LISTEN_PORT=69
+EXPOSE $LISTEN_POR/UDP
+ENTRYPOINT ["in.tftpd", "-s", "/srv/tftp", "-4", "-L", "-a", "$LISTEN_IP:$LISTEN_PORT"]
 
-ENTRYPOINT in.tftpd -s /srv -4 -L -a $LISTEN_IP:$LISTEN_PORT
+# Test:
+# qemu-system-x86_64 -boot n -netdev user,id=net0,bootfile=tftp://172.17.0.2/pxelinux.0 -device virtio-net-pci,netdev=net0
+# qemu-system-x86_64 -boot n -netdev user,id=net0,bootfile=tftp://172.17.0.2/undionly.kpxe -device virtio-net-pci,netdev=net0

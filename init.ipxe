@@ -1,0 +1,4 @@
+#!ipxe
+  
+dhcp
+chain tftp://172.17.0.2/boot.ipxe

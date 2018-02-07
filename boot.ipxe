@@ -1,0 +1,22 @@
+#!ipxe
+
+# basiert auf: https://gist.github.com/robinsmidsrod/2234639
+
+# Global variables used by all other iPXE scripts
+chain --autofree boot.ipxe.cfg ||
+
+# Boot <boot-url>/<boot-dir>/by-hostname/<hostname>.ipxe
+# if hostname DHCP variable is set and script is present
+isset ${hostname} && echo Versuche hostspezifische Konfiguration (DHCP hostname)... && chain --replace --autofree ${boot-dir}by-hostname/${hostname}.ipxe ||
+
+# Boot <boot-url>/<boot-dir>/by-uuid/<UUID>.ipxe
+# if SMBIOS UUID variable is set and script is present
+echo Versuche hostspezifische Konfiguration (UUID)...
+isset ${uuid} && chain --replace --autofree ${boot-dir}by-uuid/${uuid}.ipxe ||
+
+# Boot <boot-url>/<boot-dir>/by-mac/010203040506.ipxe if script is present
+echo Versuche hostspezifische Konfiguration (MAC)...
+chain --replace --autofree ${boot-dir}by-mac/${mac:hexraw}.ipxe ||
+
+# Boot <boot-url>/menu.ipxe script if all other options have been exhausted
+chain --replace --autofree ${menu-url} || shell
