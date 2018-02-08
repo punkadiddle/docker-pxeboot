@@ -1,14 +1,16 @@
 #!ipxe
 
 # Variables are specified in boot.ipxe.cfg
-console --x 1024 --y 768 --picture ipxe.png
+colour --rgb 0x0a1429 4
+colour --rgb 0x3366cc 6
+console --x 1024 --y 768 --picture ipxe.png --keep
 
 isset ${menu-default} || set menu-default exit
 
 ###################### MAIN MENU ####################################
 
 :start
-menu iPXE Bootmenue ${hostname} ${mac:hexraw}
+menu iPXE Boot ${hostname} (MAC ${mac:hexhyp})
 item --gap --             ------------------------- Operating systems ------------------------------
 item --key u ubuntu       Ubuntu 16.04 Desktop
 item --gap --             ------------------------- Projektmenues ----------------------------------
@@ -16,8 +18,8 @@ item --key a submenu-a    Demoprojekt A
 item --gap --             ------------------------- Tools and utilities ----------------------------
 item --key p pxelinux     Load PXELinux menu
 item --gap --             ------------------------- Advanced options -------------------------------
-item --key c config       Configure settings
-item shell                Drop to iPXE shell
+item --key 0x137e config  [F7]  Configure settings
+item --key 0x137f shell   [F8]  Drop to iPXE shell
 item reboot               Reboot computer
 item
 item --key x exit         Exit iPXE and continue BIOS boot

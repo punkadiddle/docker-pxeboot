@@ -16,7 +16,7 @@ isset ${uuid} && chain --replace --autofree ${boot-dir}by-uuid/${uuid}.ipxe ||
 
 # Boot <boot-url>/<boot-dir>/by-mac/010203040506.ipxe if script is present
 echo Versuche hostspezifische Konfiguration (MAC)...
-chain --replace --autofree ${boot-dir}by-mac/${mac:hexraw}.ipxe ||
+chain --replace --autofree ${boot-dir}by-mac/${mac:hexhyp}.ipxe ||
 
 # Boot <boot-url>/menu.ipxe script if all other options have been exhausted
 chain --replace --autofree ${menu-url} || shell
