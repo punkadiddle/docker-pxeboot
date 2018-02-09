@@ -6,5 +6,6 @@ sed -ri 's;^//(#define[[:space:]]+)(CONSOLE_CMD|NTP_CMD|REBOOT_CMD)(.*);\1\2\3;g
 sed -ri 's;^//(#define[[:space:]]+)(CONSOLE_FRAMEBUFFER)(.*)$;\1\2\3;g' config/console.h
 sed -ri 's;^//(#define[[:space:]]+KEYBOARD_MAP).*;\1 de;g' config/console.h
 
-make bin/undionly.kpxe EMBED=../../init.ipxe
+make bin/undionly.kpxe 
+#EMBED=../../init.ipxe
 cp bin/undionly.kpxe ../..
