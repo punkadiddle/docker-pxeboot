@@ -1,0 +1,101 @@
+#!ipxe
+
+# based on https://gist.github.com/robinsmidsrod/2234639
+
+# Variables are specified in boot.ipxe.cfg
+colour --rgb 0x0a1429 4
+colour --rgb 0x3366cc 6
+console --x 1024 --y 768 --picture ipxe.png --keep
+
+isset ${menu-default} || set menu-default exit
+
+###################### MAIN MENU ####################################
+
+:start
+menu iPXE Boot ${hostname} (MAC ${mac:hexhyp} UUID ${uuid})
+item --gap --                ------------------------- Operating systems ------------------------------
+item --key u ubuntu          Ubuntu 16.04 Desktop
+item --gap --                ------------------------- Projektmenues ----------------------------------
+item --key a submenu-a       Demoprojekt A
+item --gap --                ------------------------- Tools and utilities ----------------------------
+item --key p pxelinux        Load legacy PXELinux menu
+item --gap --                ------------------------- Advanced options -------------------------------
+item --key 0x137c menu-diag  [F5]  Diagnostics
+item --key 0x137e config     [F7]  Configure settings
+item --key 0x137f shell      [F8]  Drop to iPXE shell
+item reboot                  Reboot computer
+item
+item --key x exit         Exit iPXE and continue BIOS boot
+choose --timeout ${menu-timeout} --default ${menu-default} selected || goto cancel
+set menu-timeout 0
+goto ${selected}
+
+:cancel
+echo You cancelled the menu, dropping you to a shell
+
+:shell
+echo Type 'exit' to get the back to the menu
+shell
+set menu-timeout 0
+set submenu-timeout 0
+goto start
+
+:failed
+echo Booting failed, dropping to shell
+goto shell
+
+:reboot
+reboot
+
+:exit
+exit
+
+:config
+config
+goto start
+
+:back
+set submenu-timeout 0
+clear submenu-default
+goto start
+
+############ MAIN MENU ITEMS ############
+
+:pxelinux
+chain pxelinux.0 || goto failed
+goto start
+
+:ubuntu
+echo Starting Ubuntu 16.04 installer
+set base-url ${boot-url}ubuntu-16.04-desktop
+kernel ${base-url}/linux
+initrd ${base-url}/initrd.gz
+imgargs linux auto=true fb=false url=${base-url}/./preseed.cfg
+boot || goto failed
+goto start
+
+:submenu-a
+chain --autofree ${boot-dir}a/submenu.ipxe ||
+goto start
+
+###################### DIAGNOSTICS MENU #############################
+
+:menu-diag
+menu Diagnostic tools
+item memtest       Memtest86+ 4.20
+item
+item --key 0x08 back Back to top menu...
+iseq ${menu-default} menu-diag && isset ${submenu-default} && goto menu-diag-timed ||
+choose selected && goto ${selected} || goto start
+:menu-diag-timed
+choose --timeout ${submenu-timeout} --default ${submenu-default} selected && goto ${selected} || goto start
+
+:memtest
+# TODO: Fix the URI parser to make the + sign work
+#chain memtest86+-4.20.elf.img - || goto failed
+chain memtest86plus-4.20.elf.img - || goto failed
+goto start
+
+
+
+

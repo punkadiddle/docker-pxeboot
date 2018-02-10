@@ -8,4 +8,4 @@ sed -ri 's;^//(#define[[:space:]]+KEYBOARD_MAP).*;\1 de;g' config/console.h
 
 make bin/undionly.kpxe 
 #EMBED=../../init.ipxe
-cp bin/undionly.kpxe ../..
+cp bin/undionly.kpxe ../../initial-tftp/undionly.0

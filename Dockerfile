@@ -1,45 +1,44 @@
 FROM centos:latest
 
-RUN yum update;\
-    yum install -y tftp-server syslinux syslinux-tftpboot
+COPY initial-tftp /srv/
+COPY dnsmasq-pxe.conf start-dnsmasq.sh /root/
 
-RUN mkdir -p /srv/tftp/{pxelinux.cfg}
-RUN cp /usr/share/syslinux/{{mboot,menu,chain}.c32,pxelinux.0,memdisk} /srv/tftp
-RUN mkdir -p /srv/tftp/{by-uuid,by-hostname,by-mac}
-COPY default /srv/tftp/pxelinux.cfg/
-COPY boot.ipxe* /srv/tftp/
-COPY menu.ipxe* /srv/tftp/
-COPY *.kpxe /srv/tftp/
-COPY ipxe.png /srv/tftp/
-RUN mkdir /srv/tftp/a
-COPY a/* /srv/tftp/a/
+RUN mkdir /srv/tftp ;\
+    mkdir -p /srv/initial-tftp/{by-hostname,by-mac,by-uuid,pxelinux.cfg}
+
+RUN yum -y update &&\
+    yum -y install dnsmasq net-tools syslinux-tftpboot &&\
+    cp /usr/share/syslinux/{{mboot,menu,chain}.c32,pxelinux.0,memdisk} /srv/initial-tftp &&\
+    yum -y erase syslinux-tftpboot &&\
+    yum clean all &&\
+    rm -rf /var/cache/yum
 
 # ----------------------------------------------------------------------------
 # Bau von iPXE
 # http://ipxe.org/howto/msdhcp
 # git clone git://git.ipxe.org/ipxe.git
 
-#RUN yum -y install unzip make gcc perl xz-devel
-#WORKDIR /tmp
-#COPY ipxe-master.zip .
-#COPY init.ipxe .
-#RUN unzip ipxe-master.zip
-#WORKDIR /tmp/ipxe-master/src
-#RUN sed -ri 's;^//(#define[[:space:]]+)(CONSOLE_CMD|NTP_CMD|REBOOT_CMD)(.*);\1\2\3;g' config/general.h;\
-#    sed -ri 's;^//(#define[[:space:]]+)(CONSOLE_FRAMEBUFFER)(.*)$;\1\2\3;g' config/console.h;\
-#    sed -ri 's;^//(#define[[:space:]]+KEYBOARD_MAP).*;\1 de;g' config/console.h
-#RUN make bin/undionly.kpxe EMBED=/tmp/init.ipxe
-#RUN cp /tmp/ipxe-master/src/bin/undionly.kpxe /srv/tftp/
-#RUN cp /tmp/ipxe-master/src/bin/undionly.kpxe /srv/
-#RUN rm -rf /tmp/ipxe-master* /tmp/*.ipxe
-#RUN yum -y remove unzip make gcc perl xz-devel
+COPY ipxe-master.zip /srv/
+RUN yum -y install unzip make gcc perl xz-devel;\
+    cd /srv; unzip ipxe-master.zip && \
+    cd /srv/ipxe-master/src && \
+    sed -ri 's;^//(#define[[:space:]]+)(CONSOLE_CMD|NTP_CMD|REBOOT_CMD)(.*);\1\2\3;g' config/general.h && \
+    sed -ri 's;^//(#define[[:space:]]+)(CONSOLE_FRAMEBUFFER)(.*)$;\1\2\3;g' config/console.h && \
+    sed -ri 's;^//(#define[[:space:]]+KEYBOARD_MAP).*;\1 de;g' config/console.h && \
+    make bin/undionly.kpxe && \
+    cp bin/undionly.kpxe /srv/initial-tftp/undionly.kpxe.0 && \
+    rm -rf /srv/ipxe-master && \
+    yum -y erase unzip make gcc perl xz-devel && \
+    yum clean all && rm -rf /var/cache/yum
 # ----------------------------------------------------------------------------
 
+VOLUME ["/srv/tftp"]
 
-ENV LISTEN_IP=0.0.0.0
-ENV LISTEN_PORT=69
-EXPOSE $LISTEN_PORT/UDP
-ENTRYPOINT in.tftpd -s /srv/tftp -4 -L -a $LISTEN_IP:$LISTEN_PORT
+#EXPOSE 69/UDP
+#ENTRYPOINT in.tftpd -s /srv/tftp -4 -L -a 0.0.0.0:69
+
+EXPOSE 67/UDP 68/UDP 69/UDP
+ENTRYPOINT ["/root/start-dnsmasq.sh"]
 
 # Test:
 # qemu-system-x86_64 -boot n -netdev user,id=net0,bootfile=tftp://172.17.0.2/pxelinux.0 -device virtio-net-pci,netdev=net0
