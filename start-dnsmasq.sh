@@ -4,10 +4,19 @@ if [ -z "$SUBNET" ]; then
        exit 1
 fi
 
-ifconfig eth0
+echo "Host IP: $(hostname --all-ip-addresses)"
+
+ARGS=( )
+ARGS+=( --dhcp-range="${SUBNET},proxy,${SUBNET_MASK}" )
+if [ -z ${DEBUG+x} ]; then
+	ARGS+=( -k )
+else
+    ARGS+=( --log-dhcp )
+	ARGS+=( -d )
+fi
 
 set -x
-dnsmasq $@ --conf-file=/root/dnsmasq-pxe.conf --dhcp-range="${SUBNET},proxy" -k
+dnsmasq $@ --conf-file=/root/dnsmasq-pxe.conf ${ARGS[@]}
 result=$?
 set +x
 echo "exitcode $result"

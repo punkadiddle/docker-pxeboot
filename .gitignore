@@ -1,1 +1,2 @@
-/ipxe-master/
+/ipxe-*/
+#initial-tftp/*.0

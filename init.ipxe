@@ -1,4 +1,8 @@
 #!ipxe
   
+set user-class AKiPXE
 dhcp
-chain tftp://172.17.0.2/boot.ipxe
+chain tftp://${proxydhcp/dhcp-server}/boot.ipxe
+
+# fallback
+autoboot
